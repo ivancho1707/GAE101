@@ -1,21 +1,14 @@
-import webapp2
-import os
-import jinja2
 import logging
+import webapp2
+
+from models import *
 
 from google.appengine.api import users, channel
-from google.appengine.ext import db
-
 from django.utils import simplejson as json
 
-ROOT_PATH = os.path.dirname(__file__)
-jinja_environment = jinja2.Environment(loader = jinja2.FileSystemLoader(os.path.join(ROOT_PATH, 'templates')))
-logging.getLogger().setLevel(logging.DEBUG)
+from settings import *
 
-class Channels(db.Model):
-    channel_id  = db.StringProperty(default = "") 
-
-class IndexPage(webapp2.RequestHandler):
+class Home(webapp2.RequestHandler):
     def get(self):
         user = users.get_current_user()
 
@@ -35,7 +28,7 @@ class IndexPage(webapp2.RequestHandler):
         else:
             self.redirect(users.create_login_url(self.request.uri))
 
-class PostMsg(webapp2.RequestHandler):
+class SendMessage(webapp2.RequestHandler):
     def post(self):
         user            = users.get_current_user()
         message         = '<strong>%s dice:</strong> %s' % (user.nickname(), self.request.get('message'))
@@ -65,23 +58,9 @@ class Connected(webapp2.RequestHandler):
             current_channel = Channels(key_name = client_id, channel_id = client_id)
             current_channel.put()
 
-class Logout(webapp2.RequestHandler):
-    def get(self):
-        self.redirect(users.create_logout_url('/'))
-
 def send_message(msg):
     all_channels = Channels.all().fetch(1000)
     for c in all_channels:
         channel_msg = json.dumps({'success': True, 'msg': msg+'</br>'})
         logging.info('sending message to:' + c.channel_id)
         channel.send_message(c.channel_id, channel_msg)
-
-app = webapp2.WSGIApplication(
-        [
-            ('/', IndexPage),
-            ('/post/', PostMsg),
-            ('/logout/', Logout),
-            ('/_ah/channel/disconnected/', Disconnected),
-            ('/_ah/channel/connected/', Connected)
-        ],
-        debug = True)

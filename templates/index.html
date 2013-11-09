@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Google App Engine 101 - Chat Example</title>
+        <meta charset="utf-8">
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+        <meta name="author" content="Ivan Ordoñez, @ivancho_O">
+        <meta HTTP-EQUIV="Content-Language" CONTENT="es-MX">
+        <!-- Le meta content -->
+        <meta name="description" content="Construye aplicaciones web escalables usando la misma infraestructura que google usa en sus productos con @ivancho_O">
+        <meta name="keywords" content="GAE, App, Engine, tutorial, GAE101, python, jinja, django, channel, API, 101, ivancho, ivancho_O, datastore, google, gdg, unam, developers">
+        <!-- Le twitter cards -->
+        <meta name="twitter:card" content="summary">
+        <meta name="twitter:site" content="@ivancho_O">
+        <meta name="twitter:title" content="Google App Engine 101 examples by @ivancho_O">
+        <meta name="twitter:description" content="Construye aplicaciones web escalables usando la misma infraestructura que google usa en sus productos con @ivancho_O">
+        <meta name="twitter:creator" content="@ivancho_O">
+        <meta name="twitter:image:src" content="https://gae101chatex.appspot.com/static/image/GAE.png">
+        <meta name="twitter:domain" content="ivn.mx">
+        <!-- Le open graph -->
+        <meta name="Language" CONTENT="spanish">
+        <meta property="og:title" content="Google App Engine 101 examples by @ivancho_O"/>
+        <meta property="og:image" content="https://gae101chatex.appspot.com/static/image/GAE.png"/>
+        <meta property="og:description" content="Construye aplicaciones web escalables usando la misma infraestructura que google usa en sus productos con @ivancho_O"/>
+        <!-- Le styles -->
+        <link href="/static/style/bootstrap.css" rel="stylesheet">
+        <link href='http://fonts.googleapis.com/css?family=Roboto:400,300,500,500italic,400italic,300italic' rel='stylesheet' type='text/css'>
+        <style type="text/css">
+            .hidden-items{
+                display: none;
+            }
+            .starter-template {
+                padding: 40px 15px;
+                text-align: center;
+            }
+            .bs-docs-nav{
+                background-color: #1075BC;
+            }
+            .bs-docs-nav .navbar-brand {
+                color: white;
+            }
+            .navbar-inverse .navbar-nav > li > a {
+                color: white;
+            }
+            .navbar-brand {
+                font-size: large;
+                font-weight: 300;
+            }
+            .navbar-right {
+                float: right!important;
+            }
+            body{
+                padding-top: 50px;
+                font-family: 'Roboto', sans-serif;
+            }
+            #chat{
+                overflow: scroll;
+            }
+        </style>
+    </head>
+    <body data-twttr-rendered="true" itemscope itemtype="http://schema.org/Article">
+        <span class="hidden-items">
+            <h1 itemprop="name">Google App Engine 101 examples by @ivancho_O</h1>
+            <img itemprop="image" src="https://gae101chatex.appspot.com/static/image/GAE.png" />
+            <p itemprop="description">Construye aplicaciones web escalables usando la misma infraestructura que google usa en sus productos con @ivancho_O</p>
+        </span>
+
+        <div class="navbar navbar-inverse navbar-fixed-top bs-docs-nav">
+            <div class="container">
+                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".nav-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="http://cinemasapp.co">GAE 101</a>
+                <div class="nav-collapse collapse">
+                    <ul class="nav navbar-nav navbar-right">
+                        <li class="bs-nav-elem"><a href="http://ivn.mx/gae101sc">Sourcecode</a></li>
+                        <li class="bs-nav-elem"><a href="http://ivn.mx/gae101do">Diapositivas</a></li>
+                        <li class="bs-nav-elem"><a href="http://ivn.mx/gae101co">Contacto</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="row">
+            <div class="col col-lg-12">
+                <table class="table table-striped" id="chat"></table>
+            </div>
+
+            <div class="col col-lg-12">
+                <div>Te has unido como {{nickname}}, channel id: {{channel_id}}</div>
+                <form role="form" class="form-inline">
+                    <div class="input-group">
+                        <input type="text" name="message" autocomplete="off" placeholder="Escribe tu mensaje" class="form-control" width="80%"/>
+                        <span class="input-group-btn">
+                            <button type="submit" class="btn btn-success" type="button">Env&iacute;ar</button>
+                        </span>
+                    </div>
+                </form><br>
+            </div>
+        </div>
+        <!-- Le scripts -->
+        <script type="text/javascript" src="/_ah/channel/jsapi"></script>
+        <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
+        <script src="/static/script/bootstrap.js"></script>
+        <script type="text/javascript">
+            $(document).ready(function(){
+                var chat_token  = '{{chat_token}}';
+                var channel     = new goog.appengine.Channel(chat_token);
+                var socket      = channel.open();
+                socket.onopen   = function(){
+                };
+                socket.onmessage= function(message){
+                    var data = $.parseJSON(message.data);
+                    $('#chat').append('<tr><td>'+data['msg']+'</td></tr>');
+                };
+                socket.onerror  = function(error){
+                    if (error.code == 0) {
+                        // No need to get a new token.
+                        openChannel(); 
+                    } else {
+                        console.log("error "+ error.code + ". " + error.description)
+                        document.location.reload()
+                    }
+                };
+                socket.onclose  = function(){};
+
+                $("form").submit(function(e){
+                    e.preventDefault();
+                    $.ajax({
+                        type: 'POST',
+                        cache: false,
+                        url: '/post/',
+                        data: $(this).serialize(), 
+                        success: function(msg) {
+                            $("input[name=message]").val('');
+                        }
+                    });
+                });     
+            });
+        </script>
+    </body>
+</html>
